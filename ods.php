@@ -24,11 +24,12 @@ class ods {
 	var $currentCell;
 	var $lastRowAtt;
 	var $repeat;
-	
+	var $spreads;
 	function ods() {
 		$this->styles = array();
 		$this->fonts = array();
 		$this->sheets = array();
+		$this->spreads = array();
 		$this->currentRow = 0;
 		$this->currentSheet = 0;
 		$this->currentCell = 0;
@@ -170,20 +171,27 @@ class ods {
 			if(isset($attrs['TABLE:NUMBER-COLUMNS-REPEATED'])) {
 				$times = intval($attrs['TABLE:NUMBER-COLUMNS-REPEATED']);
 				$times--;
-				for($i=1;$i<=$times;$i++) {
-					$cnum = $this->currentCell+$i;
-					$this->sheets[$this->currentSheet]['rows'][$this->currentRow][$cnum]['attrs'] = $attrs;
-				}
+				$this->spreads[]=array('t'=>'column','s'=>$this->currentSheet,'r'=>$this->currentRow,'c'=>$this->currentCell,'x'=>$times,'a'=>$attrs);
+				//TODO: do this after sheet parsed so we dont 'alocate' empty cells
+				
+				//for($i=1;$i<=$times;$i++) {
+				//	$cnum = $this->currentCell+$i;
+				//	$this->sheets[$this->currentSheet]['rows'][$this->currentRow][$cnum]['attrs'] = $attrs;
+				//}
 				$this->currentCell += $times;
 				$this->repeat = $times;
 			}
 			if(isset($this->lastRowAtt['TABLE:NUMBER-ROWS-REPEATED'])) {
 				$times = intval($this->lastRowAtt['TABLE:NUMBER-ROWS-REPEATED']);
 				$times--;
-				for($i=1;$i<=$times;$i++) {
-					$cnum = $this->currentRow+$i;
-					$this->sheets[$this->currentSheet]['rows'][$cnum][$i-1]['attrs'] = $attrs;
-				}
+				
+				$this->spreads[]=array('t'=>'row','s'=>$this->currentSheet,'r'=>$this->currentRow,'c'=>$this->currentCell,'x'=>$times,'a'=>$attrs);
+				//TODO: do this after sheet parsed so we dont 'alocate' empty cells
+				
+				//for($i=1;$i<=$times;$i++) {
+				//	$cnum = $this->currentRow+$i;
+				//	$this->sheets[$this->currentSheet]['rows'][$cnum][$i-1]['attrs'] = $attrs;
+				//}
 				$this->currentRow += $times;
 			}
 		} elseif($cTagName == 'table:table-row') {
@@ -208,12 +216,13 @@ class ods {
 	function characterData($parser, $data) {
 		if($this->lastElement == 'table:table-cell') {
 			$this->sheets[$this->currentSheet]['rows'][$this->currentRow][$this->currentCell]['value'] = $data;
-			if($this->repeat > 0) {
-				for($i=0;$i<$this->repeat;$i++) {
-					$cnum = $this->currentCell - ($i+1);
-					$this->sheets[$this->currentSheet]['rows'][$this->currentRow][$cnum]['value'] = $data;
-				}
-			}
+			//TODO: do this after sheet parsed so we dont 'alocate' empty cells
+			//if($this->repeat > 0) {
+			//	for($i=0;$i<$this->repeat;$i++) {
+			//		$cnum = $this->currentCell - ($i+1);
+			//		$this->sheets[$this->currentSheet]['rows'][$this->currentRow][$cnum]['value'] = $data;
+			//	}
+			//}
 		}
 	}
 	
@@ -543,6 +552,7 @@ function parseOds($file) {
 	shell_exec('unzip '.escapeshellarg($path).' -d '.escapeshellarg($tmp.'/'.$uid));
 	$obj = new ods();
 	$obj->parse(file_get_contents($tmp.'/'.$uid.'/content.xml'));
+	shell_exec('rm -rf  '.escapeshellarg($tmp.'/'.$uid));
 	return $obj;
 }
 
@@ -569,6 +579,7 @@ function saveOds($obj,$file) {
 	mkdir($tmp.'/'.$uid.'/Configurations2/toolbar/');
 	file_put_contents($tmp.'/'.$uid.'/META-INF/manifest.xml',$obj->getManifest());
 	shell_exec('cd '.$tmp.'/'.$uid.';zip -r '.escapeshellarg($file).' ./');
+	shell_exec('rm -rf  '.escapeshellarg($tmp.'/'.$uid));
 	ini_set('default_charset',$charset);
 }
 
